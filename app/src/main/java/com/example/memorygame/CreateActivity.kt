@@ -3,6 +3,7 @@ package com.example.memorygame
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -62,6 +63,7 @@ class CreateActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private val storage = Firebase.storage
     private val db = Firebase.firestore
+
 
     private val someActivityResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -171,7 +173,10 @@ class CreateActivity : AppCompatActivity() {
 
     }
 
-        private fun saveDataToFirebase() {
+
+
+
+    private fun saveDataToFirebase() {
             btnSave.isEnabled = false
             val customGameName = etGameName.text.toString()
             // check we are not over writing existing data
