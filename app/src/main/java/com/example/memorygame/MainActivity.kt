@@ -28,6 +28,7 @@ import com.example.memorygame.utils.EXTRA_BOARD_SIZE
 import com.example.memorygame.utils.EXTRA_GAME_NAME
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
 import com.squareup.picasso.Picasso
 
@@ -45,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvNumPairs: TextView
     private lateinit var toolbar: Toolbar
 
+    private lateinit var auth: FirebaseAuth
     private val db = Firebase.firestore
     private var gameName: String? = null
     private var customGameImages: List<String>? = null
@@ -58,6 +60,24 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Initialize Firebase Authentication
+        auth = FirebaseAuth.getInstance()
+
+        // Check if the user is already signed in
+        if (auth.currentUser == null) {
+            // If not, sign in anonymously or with a predefined user account
+            auth.signInAnonymously()
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        // Sign in success
+                        Log.d(TAG, "signInAnonymously:success")
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInAnonymously:failure", task.exception)
+                    }
+                }
+        }
 
         clRoot = findViewById(R.id.clRoot)
         rvBoard = findViewById(R.id.rvBoard)

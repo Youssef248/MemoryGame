@@ -37,6 +37,7 @@ import com.example.memorygame.utils.EXTRA_GAME_NAME
 import com.example.memorygame.utils.isPermissionGranted
 import com.example.memorygame.utils.requestPermission
 import com.google.firebase.Firebase
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.storage
 import java.io.ByteArrayOutputStream
@@ -58,6 +59,7 @@ class CreateActivity : AppCompatActivity() {
     private lateinit var boardSize: BoardSize
     private var numImagesRequired = -1
     private val chosenImageUris = mutableListOf<Uri>()
+    private lateinit var auth: FirebaseAuth
     private val storage = Firebase.storage
     private val db = Firebase.firestore
 
@@ -93,6 +95,31 @@ class CreateActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create)
+
+        // Initialize Firebase Authentication
+        auth = FirebaseAuth.getInstance()
+
+        // Check if the user is already signed in
+        if (auth.currentUser == null) {
+            auth.signInAnonymously()
+                .addOnCompleteListener(this) { task ->
+                    if (task.isSuccessful) {
+                        // Sign in success
+                        Log.d(TAG, "signInAnonymously in CREATE: success")
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInAnonymously in CREATE: failure", task.exception)
+                    }
+                }
+                .addOnFailureListener { exception ->
+
+                    Log.e(TAG, "signInAnonymously failed with exception", exception)
+                }
+        }
+
+
+
+
 
         rvImagePicker = findViewById(R.id.rvImagePicker)
         etGameName = findViewById(R.id.etGameName)
