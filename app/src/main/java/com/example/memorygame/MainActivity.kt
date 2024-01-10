@@ -1,6 +1,7 @@
 package com.example.memorygame
 
 import android.animation.ArgbEvaluator
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
@@ -31,6 +32,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
 import com.squareup.picasso.Picasso
+import java.util.Locale
 
 
 class MainActivity : AppCompatActivity() {
@@ -114,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         when (item.itemId){
             R.id.mi_refresh -> {
                 if(memoryGame.getNumMoves() > 0 && !memoryGame.haveWonGame()){
-                    showAlertDialog("Quit your current game?", null, View.OnClickListener {
+                    showAlertDialog(getString(R.string.quit_game), null, View.OnClickListener {
                         setupBoard()
                     })
                 }else{
@@ -135,8 +137,23 @@ class MainActivity : AppCompatActivity() {
                 showDownloadDialog()
                 return true
             }
+            R.id.mi_change_language -> {
+                switchLanguage()
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    private fun switchLanguage() {
+        val currentLanguage = Locale.getDefault().language
+
+        // Toggle between English and Dutch
+        val newLanguage = if (currentLanguage == "en") "nl" else "en"
+
+        // Set the new language and recreate the activity
+        LocaleHelper.setLocale(this, newLanguage)
+        recreate()
     }
 
 
@@ -157,19 +174,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun showDownloadDialog() {
         val boardDownloadView = LayoutInflater.from(this).inflate(R.layout.dialog_download_board, null)
-        showAlertDialog("Fetch memory game", boardDownloadView, View.OnClickListener {
+        showAlertDialog(getString(R.string.fetch), boardDownloadView, View.OnClickListener {
             val etDownloadGame = boardDownloadView.findViewById<EditText>(R.id.etDownloadGame)
             val gameToDownload = etDownloadGame.text.toString().trim()
             downloadGame(gameToDownload)
         })
     }
 
+    @SuppressLint("StringFormatInvalid", "StringFormatMatches")
     private fun downloadGame(customGameName: String) {
         db.collection("games").document(customGameName).get().addOnSuccessListener { document ->
             val userImageList = document.toObject(UserImageList::class.java)
             if(userImageList?.images == null){
                 Log.e(TAG, "Invalid custom game data from Firestore")
-                Snackbar.make(clRoot, "Sorry, we couldn't find any such game, '$gameName'", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(clRoot, getString(R.string.sorry, gameName), Snackbar.LENGTH_LONG).show()
                 return@addOnSuccessListener
             }
             val numCards = userImageList.images.size * 2
@@ -178,7 +196,7 @@ class MainActivity : AppCompatActivity() {
             for(imageUrl in userImageList.images){
                 Picasso.get().load(imageUrl).fetch()
             }
-            Snackbar.make(clRoot, "You're now playing '${customGameName}'!", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(clRoot, getString(R.string.now, customGameName), Snackbar.LENGTH_LONG).show()
             gameName = customGameName
             setupBoard()
         }.addOnFailureListener{exception->
@@ -189,7 +207,7 @@ class MainActivity : AppCompatActivity() {
     private fun showCreationDialog() {
         val boardSizeView = LayoutInflater.from(this).inflate(R.layout.dialog_board_size, null)
         val radioGroupSize = boardSizeView.findViewById<RadioGroup>(R.id.radioGroup)
-        showAlertDialog("Create your own memory board", boardSizeView, View.OnClickListener {
+        showAlertDialog(getString(R.string.create_memory_board), boardSizeView, View.OnClickListener {
             val desiredBoardSize = when (radioGroupSize.checkedRadioButtonId){
                 R.id.rbEasy -> BoardSize.EASY
                 R.id.rbMedium -> BoardSize.MEDIUM
@@ -210,7 +228,7 @@ class MainActivity : AppCompatActivity() {
             BoardSize.MEDIUM -> radioGroupSize.check(R.id.rbMedium)
             BoardSize.HARD -> radioGroupSize.check(R.id.rbHard)
         }
-        showAlertDialog("Choose new size", boardSizeView, View.OnClickListener {
+        showAlertDialog(getString(R.string.choose_new_size), boardSizeView, View.OnClickListener {
             boardSize = when (radioGroupSize.checkedRadioButtonId){
                 R.id.rbEasy -> BoardSize.EASY
                 R.id.rbMedium -> BoardSize.MEDIUM
@@ -226,7 +244,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle(title)
             .setView(view)
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .setPositiveButton("OK"){_, _ ->
                 positiveClickListener.onClick(null)
             }
@@ -239,27 +257,25 @@ class MainActivity : AppCompatActivity() {
         toolbar.title = gameName ?: getString(R.string.app_name)
         when(boardSize){
             BoardSize.EASY -> {
-                tvNumMoves.text = "Easy: 4 x 2"
-                tvNumPairs.text = "Pairs: 0 / 4"
+                tvNumMoves.text = getString(R.string.easy)
+                tvNumPairs.text = getString(R.string.easy_pairs)
             }
             BoardSize.MEDIUM -> {
-                tvNumMoves.text = "Medium: 6 x 3"
-                tvNumPairs.text = "Pairs: 0 / 9"
+                tvNumMoves.text = getString(R.string.medium)
+                tvNumPairs.text = getString(R.string.medium_pairs)
             }
             BoardSize.HARD -> {
-                tvNumMoves.text = "Medium: 6 x 4"
-                tvNumPairs.text = "Pairs: 0 / 12"
+                tvNumMoves.text = getString(R.string.hard)
+                tvNumPairs.text = getString(R.string.hard_pairs)
             }
         }
         tvNumPairs.setTextColor(ContextCompat.getColor(this, R.color.color_progress_none))
         memoryGame = MemoryGame(boardSize, customGameImages)
 
-
         adapter = MemoryBoardAdapter(this, boardSize, memoryGame.cards, object: MemoryBoardAdapter.CardClickListener{
             override fun onCardClicker(position: Int) {
                 updateGameWithFlip(position)
             }
-
         })
         rvBoard.adapter = adapter
         rvBoard.setHasFixedSize(true)
@@ -269,28 +285,26 @@ class MainActivity : AppCompatActivity() {
     private fun updateGameWithFlip(position: Int) {
         //error checking
         if(memoryGame.haveWonGame()){
-            //alert user of invalid move
-            Snackbar.make(clRoot, "You already won!", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(clRoot, getString(R.string.you_already_won), Snackbar.LENGTH_LONG).show()
             return
         }
         if(memoryGame.isCardFaceUp(position)){
-            //alert user of invalid move
-            Snackbar.make(clRoot, "Invalid move!", Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(clRoot, getString(R.string.invalid_move), Snackbar.LENGTH_SHORT).show()
             return
         }
         //actually flipping the card
 
         if(memoryGame.flipCard(position)){
-            Log.i(TAG, "Found a math! Num pairs found: ${memoryGame.numPairsFound}")
+            Log.i(TAG, "Found a macth! Num pairs found: ${memoryGame.numPairsFound}")
             val color = ArgbEvaluator().evaluate(
                 memoryGame.numPairsFound.toFloat() / boardSize.getNumPairs(),
                 ContextCompat.getColor(this, R.color.color_progress_none),
                 ContextCompat.getColor(this, R.color.color_progress_full)
             )as Int
             tvNumPairs.setTextColor(color)
-            tvNumPairs.text = "Pairs: ${memoryGame.numPairsFound} / ${boardSize.getNumPairs()}"
+            tvNumPairs.text = "${R.string.pairs}: ${memoryGame.numPairsFound} / ${boardSize.getNumPairs()}"
             if(memoryGame.haveWonGame()){
-                Snackbar.make(clRoot, "You have won! Congratulations.", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(clRoot, R.string.you_won, Snackbar.LENGTH_LONG).show()
             }
         }
         tvNumMoves.text = "Moves: ${memoryGame. getNumMoves()}"

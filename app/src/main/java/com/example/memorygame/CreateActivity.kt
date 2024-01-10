@@ -1,5 +1,6 @@
 package com.example.memorygame
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -65,6 +66,7 @@ class CreateActivity : AppCompatActivity() {
     private val db = Firebase.firestore
 
 
+    @SuppressLint("StringFormatInvalid")
     private val someActivityResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
@@ -77,7 +79,7 @@ class CreateActivity : AppCompatActivity() {
                         chosenImageUris.add(uri)
                     }
                     rvImagePicker.adapter?.notifyDataSetChanged()
-                    supportActionBar?.title = "Choose pics (${chosenImageUris.size} / $numImagesRequired)"
+                    supportActionBar?.title = getString(R.string.choose_pics, chosenImageUris.size, numImagesRequired)
                     btnSave.isEnabled = shouldEnableSaveButton()
                 }
             }
@@ -93,6 +95,7 @@ class CreateActivity : AppCompatActivity() {
         return true
     }
 
+    @SuppressLint("StringFormatInvalid", "StringFormatMatches")
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,7 +143,7 @@ class CreateActivity : AppCompatActivity() {
         boardSize = intent.getSerializableExtra(EXTRA_BOARD_SIZE, BoardSize::class.java) as BoardSize
         numImagesRequired = boardSize.getNumPairs()
 
-        supportActionBar?.title = "Choose pics (0 / $numImagesRequired)"
+        supportActionBar?.title = getString(R.string.choose_pics_counter, numImagesRequired)
         btnSave.setOnClickListener{
             saveDataToFirebase()
         }
@@ -183,8 +186,8 @@ class CreateActivity : AppCompatActivity() {
             db.collection("games").document(customGameName).get().addOnSuccessListener { document ->
                 if (document != null && document.data != null) {
                     AlertDialog.Builder(this)
-                        .setTitle("Name taken")
-                        .setMessage("A game already exists with the name '$customGameName'. Please choose another name.")
+                        .setTitle(getString(R.string.name_taken))
+                        .setMessage(getString(R.string.game_exists))
                         .setPositiveButton("OK", null)
                         .show()
                     btnSave.isEnabled = true
@@ -247,7 +250,7 @@ class CreateActivity : AppCompatActivity() {
                     }
                     Log.i(TAG, "Successfully created game $gameName")
                     AlertDialog.Builder(this)
-                        .setTitle("Upload complete! Let's play your game '${gameName}'")
+                        .setTitle(getString(R.string.upload_complete))
                         .setPositiveButton("OK"){_, _ ->
                             val resultData = Intent()
                             resultData.putExtra(EXTRA_GAME_NAME, gameName)
@@ -299,7 +302,7 @@ class CreateActivity : AppCompatActivity() {
         intent.type = "image/*"
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
 
-        val chooserIntent = Intent.createChooser(intent, "Choose pictures")
+        val chooserIntent = Intent.createChooser(intent, getString(R.string.choose_pictures))
         someActivityResultLauncher.launch(chooserIntent)
     }
 
