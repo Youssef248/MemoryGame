@@ -43,18 +43,17 @@ import java.io.ByteArrayOutputStream
 
 class CreateActivity : AppCompatActivity() {
 
+    // Define companion object properties.
     companion object {
-        //private const val READ_PHOTOS_PERMISSION = android.Manifest.permission.READ_EXTERNAL_STORAGE
-        //private const val READ_EXTERNAL_PHOTOS_CODE = 24
         private const val MIN_GAME_NAME_LENGTH = 3
         private const val MAX_GAME_NAME_LENGTH = 14
     }
 
+    // Declare UI components and other variables.
     private lateinit var rvImagePicker: RecyclerView
     private lateinit var etGameName: EditText
     private lateinit var btnSave: Button
     private lateinit var pbUploading : ProgressBar
-
     private lateinit var boardSize: BoardSize
     private var numImagesRequired = -1
     private val chosenImageUris = mutableListOf<Uri>()
@@ -62,14 +61,13 @@ class CreateActivity : AppCompatActivity() {
     private val storage = Firebase.storage
     private val db = Firebase.firestore
 
-
+    // Register a result launcher for handling activity results.
     private val someActivityResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
                 // Handle the result from the launched activity
                 val data: Intent? = result.data
                 data?.let {
-
                     val uri = it.data
                     if (uri != null) {
                         chosenImageUris.add(uri)
@@ -81,6 +79,7 @@ class CreateActivity : AppCompatActivity() {
             }
         }
 
+    // Function to determine whether to enable the save button.
     private fun shouldEnableSaveButton(): Boolean {
         if (chosenImageUris.size != numImagesRequired){
             return false
@@ -91,6 +90,7 @@ class CreateActivity : AppCompatActivity() {
         return true
     }
 
+    // Override the onCreate method for activity initialization.
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,15 +112,11 @@ class CreateActivity : AppCompatActivity() {
                     }
                 }
                 .addOnFailureListener { exception ->
-
                     Log.e(TAG, "signInAnonymously failed with exception", exception)
                 }
         }
 
-
-
-
-
+        // Initialize UI components.
         rvImagePicker = findViewById(R.id.rvImagePicker)
         etGameName = findViewById(R.id.etGameName)
         btnSave = findViewById(R.id.btnSave)
@@ -135,30 +131,31 @@ class CreateActivity : AppCompatActivity() {
         btnBack.setOnClickListener {
             onBackPressed()
         }
+
+        // Retrieve board size from intent.
         boardSize = intent.getSerializableExtra(EXTRA_BOARD_SIZE, BoardSize::class.java) as BoardSize
         numImagesRequired = boardSize.getNumPairs()
 
         supportActionBar?.title = "Choose pics (0 / $numImagesRequired)"
-        btnSave.setOnClickListener{
+        btnSave.setOnClickListener {
             saveDataToFirebase()
         }
+
+        // Set filters for the game name length.
         etGameName.filters = arrayOf(InputFilter.LengthFilter(MAX_GAME_NAME_LENGTH))
 
+        // Add text changed listener for the game name.
         etGameName.addTextChangedListener(object: TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 btnSave.isEnabled = shouldEnableSaveButton()
             }
 
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
-            }
-
-            override fun afterTextChanged(s: Editable?) {
-
-            }
-
+            override fun afterTextChanged(s: Editable?) {}
         })
 
+        // Initialize and set up the RecyclerView for image picking.
         rvImagePicker.adapter = ImagePickerAdapter(this, chosenImageUris, boardSize, object: ImagePickerAdapter.ImageClickListener{
             override fun onPLaceholderClicked() {
                 // Launch the photo picker directly
@@ -167,38 +164,34 @@ class CreateActivity : AppCompatActivity() {
         })
         rvImagePicker.setHasFixedSize(true)
         rvImagePicker.layoutManager = GridLayoutManager(this, boardSize.getWidth())
-
-
     }
 
-
-
-
+    // Function to save data to Firebase.
     private fun saveDataToFirebase() {
         btnSave.isEnabled = false
         val customGameName = etGameName.text.toString()
-        // check we are not over writing existing data
+        // check we are not overwriting existing data
         db.collection("games").document(customGameName).get().addOnSuccessListener { document ->
             if (document != null && document.data != null) {
+                // Display an alert if the game name already exists.
                 AlertDialog.Builder(this)
                     .setTitle("Name taken")
                     .setMessage("A game already exists with the name '$customGameName'. Please choose another name.")
                     .setPositiveButton("OK", null)
                     .show()
                 btnSave.isEnabled = true
-            }else {
+            } else {
+                // Proceed with image uploading.
                 handleImageUploading(customGameName)
             }
-
-        }.addOnFailureListener{exception->
-            Log.i(TAG, "Encoutnered error while saving memory game", exception)
-            Toast.makeText(this, "Encoutnered error while saving memory game", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener{ exception->
+            Log.i(TAG, "Encountered error while saving memory game", exception)
+            Toast.makeText(this, "Encountered error while saving memory game", Toast.LENGTH_SHORT).show()
             btnSave.isEnabled = true
-
         }
-
     }
 
+    // Function to handle image uploading to Firebase Storage.
     private fun handleImageUploading(gameName: String) {
         pbUploading.visibility = View.VISIBLE
         var didEncounterError = false
@@ -233,6 +226,7 @@ class CreateActivity : AppCompatActivity() {
         }
     }
 
+    // Function to handle completion after all images are uploaded.
     private fun handleAllImagesUploaded(gameName: String, imageUrls: MutableList<String>) {
         db.collection("games").document(gameName)
             .set(mapOf("images" to imageUrls))
@@ -244,8 +238,9 @@ class CreateActivity : AppCompatActivity() {
                     return@addOnCompleteListener
                 }
                 Log.i(TAG, "Successfully created game $gameName")
+                // Display a dialog for successful game creation.
                 AlertDialog.Builder(this)
-                    .setTitle("Upload complete! Let's play your game '${gameName}'")
+                    .setTitle("Upload complete! Let's play your game '$gameName'")
                     .setPositiveButton("OK"){_, _ ->
                         val resultData = Intent()
                         resultData.putExtra(EXTRA_GAME_NAME, gameName)
@@ -255,6 +250,7 @@ class CreateActivity : AppCompatActivity() {
             }
     }
 
+    // Function to convert an image URI to a byte array for uploading.
     private fun getImageByteArray(photoUri: Uri): ByteArray {
         val originalBitmap = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P){
             val source = ImageDecoder.createSource(contentResolver, photoUri)
@@ -270,28 +266,7 @@ class CreateActivity : AppCompatActivity() {
         return byteOutputStream.toByteArray()
     }
 
-
-
-    /* override fun onRequestPermissionsResult(
-         requestCode: Int,
-         permissions: Array<out String>,
-         grantResults: IntArray
-     ) {
-         Log.d("PermissionDebug", "requestCode: $requestCode")
-         Log.d("PermissionDebug", "grantResults: ${grantResults.joinToString()}")
-         if (requestCode == READ_EXTERNAL_PHOTOS_CODE){
-             if(grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-                 Log.d("PermissionDebug", "about to do launchIntentForPhotos")
-                 launchIntentForPhotos()
-             } else {
-                 Toast.makeText(this, "In order to create a custom game, you need to provide access to your photos.", Toast.LENGTH_LONG).show()
-             }
-         }
-         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-     }
-
-     */
-
+    // Function to launch an intent for selecting photos.
     private fun launchIntentForPhotos() {
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "image/*"
@@ -300,7 +275,7 @@ class CreateActivity : AppCompatActivity() {
         val chooserIntent = Intent.createChooser(intent, "Choose pictures")
         someActivityResultLauncher.launch(chooserIntent)
     }
-
-
-
 }
+
+
+

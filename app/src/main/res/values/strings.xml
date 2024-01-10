@@ -1,4 +1,3 @@
 <resources>
-    <string name="app_name" translatable="false">MemoryGame</string>
-
+    <string name="app_name">MemoryGame</string>
 </resources>

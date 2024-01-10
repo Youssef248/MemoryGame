@@ -17,7 +17,6 @@
         app:showAsAction="never" />
     <item
         android:id="@+id/mi_download"
-        android:title="Download custom game"
+        android:title="Download custom game "
         app:showAsAction="never" />
-
 </menu>
