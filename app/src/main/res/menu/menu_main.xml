@@ -4,23 +4,20 @@
 
     <item
         android:id="@+id/mi_new_size"
-        android:title="@string/choose_new_size"
+        android:title="Choose new size"
         app:showAsAction="never" />
     <item
         android:id="@+id/mi_refresh"
         android:icon="@drawable/ic_refresh"
-        android:title="@string/refresh"
+        android:title="Refresh"
         app:showAsAction="always" />
     <item
         android:id="@+id/mi_custom"
-        android:title="@string/create_custom_game"
+        android:title="Create custom game"
         app:showAsAction="never" />
     <item
         android:id="@+id/mi_download"
-        android:title="@string/download_custom_game"
+        android:title="Download custom game"
         app:showAsAction="never" />
-    <item
-        android:id="@+id/mi_change_language"
-        android:title="@string/change_language"
-        app:showAsAction="never" />
+
 </menu>

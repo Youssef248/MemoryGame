@@ -1,6 +1,5 @@
 package com.example.memorygame
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -36,8 +35,6 @@ import com.example.memorygame.utils.BitmapScaler
 
 import com.example.memorygame.utils.EXTRA_BOARD_SIZE
 import com.example.memorygame.utils.EXTRA_GAME_NAME
-import com.example.memorygame.utils.isPermissionGranted
-import com.example.memorygame.utils.requestPermission
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
@@ -66,7 +63,6 @@ class CreateActivity : AppCompatActivity() {
     private val db = Firebase.firestore
 
 
-    @SuppressLint("StringFormatInvalid")
     private val someActivityResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
@@ -79,7 +75,7 @@ class CreateActivity : AppCompatActivity() {
                         chosenImageUris.add(uri)
                     }
                     rvImagePicker.adapter?.notifyDataSetChanged()
-                    supportActionBar?.title = getString(R.string.choose_pics, chosenImageUris.size, numImagesRequired)
+                    supportActionBar?.title = "Choose pics (${chosenImageUris.size} / $numImagesRequired)"
                     btnSave.isEnabled = shouldEnableSaveButton()
                 }
             }
@@ -95,7 +91,6 @@ class CreateActivity : AppCompatActivity() {
         return true
     }
 
-    @SuppressLint("StringFormatInvalid", "StringFormatMatches")
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -143,7 +138,7 @@ class CreateActivity : AppCompatActivity() {
         boardSize = intent.getSerializableExtra(EXTRA_BOARD_SIZE, BoardSize::class.java) as BoardSize
         numImagesRequired = boardSize.getNumPairs()
 
-        supportActionBar?.title = getString(R.string.choose_pics_counter, numImagesRequired)
+        supportActionBar?.title = "Choose pics (0 / $numImagesRequired)"
         btnSave.setOnClickListener{
             saveDataToFirebase()
         }
@@ -180,29 +175,29 @@ class CreateActivity : AppCompatActivity() {
 
 
     private fun saveDataToFirebase() {
-            btnSave.isEnabled = false
-            val customGameName = etGameName.text.toString()
-            // check we are not over writing existing data
-            db.collection("games").document(customGameName).get().addOnSuccessListener { document ->
-                if (document != null && document.data != null) {
-                    AlertDialog.Builder(this)
-                        .setTitle(getString(R.string.name_taken))
-                        .setMessage(getString(R.string.game_exists))
-                        .setPositiveButton("OK", null)
-                        .show()
-                    btnSave.isEnabled = true
-                }else {
-                    handleImageUploading(customGameName)
-                }
-
-            }.addOnFailureListener{exception->
-                Log.i(TAG, "Encoutnered error while saving memory game", exception)
-                Toast.makeText(this, "Encoutnered error while saving memory game", Toast.LENGTH_SHORT).show()
+        btnSave.isEnabled = false
+        val customGameName = etGameName.text.toString()
+        // check we are not over writing existing data
+        db.collection("games").document(customGameName).get().addOnSuccessListener { document ->
+            if (document != null && document.data != null) {
+                AlertDialog.Builder(this)
+                    .setTitle("Name taken")
+                    .setMessage("A game already exists with the name '$customGameName'. Please choose another name.")
+                    .setPositiveButton("OK", null)
+                    .show()
                 btnSave.isEnabled = true
-
+            }else {
+                handleImageUploading(customGameName)
             }
 
+        }.addOnFailureListener{exception->
+            Log.i(TAG, "Encoutnered error while saving memory game", exception)
+            Toast.makeText(this, "Encoutnered error while saving memory game", Toast.LENGTH_SHORT).show()
+            btnSave.isEnabled = true
+
         }
+
+    }
 
     private fun handleImageUploading(gameName: String) {
         pbUploading.visibility = View.VISIBLE
@@ -239,41 +234,41 @@ class CreateActivity : AppCompatActivity() {
     }
 
     private fun handleAllImagesUploaded(gameName: String, imageUrls: MutableList<String>) {
-            db.collection("games").document(gameName)
-                .set(mapOf("images" to imageUrls))
-                .addOnCompleteListener{ gameCreationTask ->
-                    pbUploading.visibility = View.GONE
-                    if (!gameCreationTask.isSuccessful){
-                        Log.e(TAG, "Exception with game creation", gameCreationTask.exception)
-                        Toast.makeText(this, "Failed game creation", Toast.LENGTH_SHORT).show()
-                        return@addOnCompleteListener
-                    }
-                    Log.i(TAG, "Successfully created game $gameName")
-                    AlertDialog.Builder(this)
-                        .setTitle(getString(R.string.upload_complete))
-                        .setPositiveButton("OK"){_, _ ->
-                            val resultData = Intent()
-                            resultData.putExtra(EXTRA_GAME_NAME, gameName)
-                            setResult(Activity.RESULT_OK, resultData)
-                            finish()
-                        }.show()
+        db.collection("games").document(gameName)
+            .set(mapOf("images" to imageUrls))
+            .addOnCompleteListener{ gameCreationTask ->
+                pbUploading.visibility = View.GONE
+                if (!gameCreationTask.isSuccessful){
+                    Log.e(TAG, "Exception with game creation", gameCreationTask.exception)
+                    Toast.makeText(this, "Failed game creation", Toast.LENGTH_SHORT).show()
+                    return@addOnCompleteListener
                 }
+                Log.i(TAG, "Successfully created game $gameName")
+                AlertDialog.Builder(this)
+                    .setTitle("Upload complete! Let's play your game '${gameName}'")
+                    .setPositiveButton("OK"){_, _ ->
+                        val resultData = Intent()
+                        resultData.putExtra(EXTRA_GAME_NAME, gameName)
+                        setResult(Activity.RESULT_OK, resultData)
+                        finish()
+                    }.show()
+            }
     }
 
     private fun getImageByteArray(photoUri: Uri): ByteArray {
-            val originalBitmap = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P){
-                val source = ImageDecoder.createSource(contentResolver, photoUri)
-                ImageDecoder.decodeBitmap(source)
-            }else{
-                MediaStore.Images.Media.getBitmap(contentResolver, photoUri)
-            }
-            Log.i(TAG, "Original width: ${originalBitmap.width} and height ${originalBitmap.height}")
-            val scaledBitmap = BitmapScaler.scaleToFitHeight(originalBitmap, 250)
-            Log.i(TAG, "Scaled width: ${scaledBitmap.width} and height ${scaledBitmap.height}")
-            val byteOutputStream = ByteArrayOutputStream()
-            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 60, byteOutputStream)
-            return byteOutputStream.toByteArray()
+        val originalBitmap = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P){
+            val source = ImageDecoder.createSource(contentResolver, photoUri)
+            ImageDecoder.decodeBitmap(source)
+        }else{
+            MediaStore.Images.Media.getBitmap(contentResolver, photoUri)
         }
+        Log.i(TAG, "Original width: ${originalBitmap.width} and height ${originalBitmap.height}")
+        val scaledBitmap = BitmapScaler.scaleToFitHeight(originalBitmap, 250)
+        Log.i(TAG, "Scaled width: ${scaledBitmap.width} and height ${scaledBitmap.height}")
+        val byteOutputStream = ByteArrayOutputStream()
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 60, byteOutputStream)
+        return byteOutputStream.toByteArray()
+    }
 
 
 
@@ -302,7 +297,7 @@ class CreateActivity : AppCompatActivity() {
         intent.type = "image/*"
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
 
-        val chooserIntent = Intent.createChooser(intent, getString(R.string.choose_pictures))
+        val chooserIntent = Intent.createChooser(intent, "Choose pictures")
         someActivityResultLauncher.launch(chooserIntent)
     }
 
